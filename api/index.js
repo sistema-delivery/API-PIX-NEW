@@ -44,16 +44,35 @@ app.use((req, res, next) => {
 app.get('/',    (req, res) => res.json({ ok: true, message: 'root OK' }));
 app.get('/api', (req, res) => res.json({ ok: true, message: '/api OK' }));
 
-// 1) Cria transação PIX (pass-through + defaults)
+// 1) Cria transação PIX (pass-through ajustando chaves)
 app.post('/api/pix/create', async (req, res) => {
-  // Adiciona defaults de moeda e método de pagamento, preservando overrides
+  // Extrai possíveis campos do bot
+  const {
+    client,
+    customer,
+    products,
+    items,
+    ...restBody
+  } = req.body;
+
+  // Monta payload final para FairPayments
   const payload = {
     currency:      'BRL',
     paymentMethod: 'PIX',
-    ...req.body
+    // Campos principais
+    ...restBody,
+    // Usa customer direto, ou mapeia client se existir
+    customer: customer || client,
+    // Usa items direto, ou mapeia products se existir
+    items: items || products?.map(p => ({
+      title:      p.name || p.title,
+      unitPrice:  Math.round((p.unitPrice ?? p.amount ?? 0) * 100),
+      quantity:   p.quantity || 1,
+      externalRef:p.id || p.externalRef
+    }))
   };
-  console.log('[API] Criando transação FairPayments:', payload);
 
+  console.log('[API] Criando transação FairPayments:', payload);
   try {
     const { data } = await axios.post(CREATE_TX_URL, payload, { headers: req.fairHeaders });
     console.log('[API] Retorno FairPayments:', data);
