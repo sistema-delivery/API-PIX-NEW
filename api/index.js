@@ -1,4 +1,3 @@
-// api/index.js
 require('dotenv').config();
 const express  = require('express');
 const mongoose = require('mongoose');
@@ -51,25 +50,14 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.json({ ok: true, message: 'root OK' }));
 app.get('/api', (req, res) => res.json({ ok: true, message: '/api OK' }));
 
-// 1) Cria transação PIX
+// 1) Cria transação PIX (pass-through do payload)
 app.post('/api/pix/create', async (req, res) => {
-  const { identifier, amount, client = {}, products = [], splits = [], metadata = {}, callbackUrl } = req.body;
-  const amountCents = Math.round(amount * 100);
+  // Assume que o cliente já envia o JSON no formato final esperado pelo FairPayments
   const payload = {
-    amount:        amountCents,
-    currency:      'BRL',
-    paymentMethod: 'PIX',
-    description:   `Pedido ${identifier || Date.now()}`,
-    customer:      { name: client.name, email: client.email, phone: client.phone },
-    items:         products.map(p => ({ title: p.name, unitPrice: Math.round((p.unitPrice || amount) * 100), quantity: p.quantity || 1, externalRef: p.id })),
-    splits:        splits.map(s => ({ recipientId: s.recipientId, percentage: s.percentage })),
-    metadata,
-    postbackUrl:   callbackUrl && /^https?:\/\//.test(callbackUrl)
-                    ? callbackUrl
-                    : WEBHOOK_BASE_URL
-                      ? `${WEBHOOK_BASE_URL.replace(/\/+$/, '')}/api/webhook/pix`
-                      : undefined
+    currency: 'BRL',
+    ...req.body
   };
+
   console.log('[API] Criando transação FairPayments:', CREATE_TX_URL, payload);
 
   try {
@@ -80,7 +68,7 @@ app.post('/api/pix/create', async (req, res) => {
     const qrUrl         = data.pix?.qrcode;
     const paymentUrl    = data.payment_url;
 
-    return res.status(201).json({ transactionId, qrUrl, paymentUrl });
+    return res.status(201).json({ transactionId, qrUrl, paymentUrl, pix: data.pix });
   } catch (err) {
     console.error('[API] Erro criando transação:', err.response?.status, err.response?.data || err.message);
     const code = err.response?.status || 500;
