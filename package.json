@@ -1,16 +1,15 @@
 {
   "name": "api-pix-fairpayments",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "api/index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node api/index.js"
   },
   "dependencies": {
     "axios": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.17.1",
-    "mongoose": "^7.0.0",
-    "serverless-http": "^2.7.0"
+    "mongoose": "^7.0.0"
   }
 }
