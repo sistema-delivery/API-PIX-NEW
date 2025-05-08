@@ -1,3 +1,4 @@
+// api/index.js
 require('dotenv').config();
 const express  = require('express');
 const mongoose = require('mongoose');
@@ -9,10 +10,14 @@ app.use(cors());
 app.use(express.json());
 
 // Carrega variáveis de ambiente
-const { FAIR_SECRET_KEY, MONGODB_URI, WEBHOOK_BASE_URL } = process.env;
+const { FAIR_SECRET_KEY, FAIR_COMPANY_ID, MONGODB_URI, WEBHOOK_BASE_URL } = process.env;
 
 if (!FAIR_SECRET_KEY) {
   console.error('❌ FAIR_SECRET_KEY não definida.');
+  process.exit(1);
+}
+if (!FAIR_COMPANY_ID) {
+  console.error('❌ FAIR_COMPANY_ID não definido.');
   process.exit(1);
 }
 
@@ -31,12 +36,13 @@ const API_BASE      = 'https://api.fairpayments.com.br/functions/v1';
 const CREATE_TX_URL = `${API_BASE}/transactions`;
 const STATUS_TX_URL = id => `${API_BASE}/transactions/${id}`;
 
-// Middleware de autenticação Basic Auth
+// Middleware de autenticação Basic Auth + Company ID
 app.use((req, res, next) => {
   const token = Buffer.from(`${FAIR_SECRET_KEY}:x`).toString('base64');
   req.fairHeaders = {
     Authorization: `Basic ${token}`,
-    'Content-Type': 'application/json'
+    'x-company-id':   FAIR_COMPANY_ID,
+    'Content-Type':   'application/json'
   };
   next();
 });
@@ -51,6 +57,7 @@ app.post('/api/pix/create', async (req, res) => {
   const amountCents = Math.round(amount * 100);
   const payload = {
     amount:        amountCents,
+    currency:      'BRL',
     paymentMethod: 'PIX',
     description:   `Pedido ${identifier || Date.now()}`,
     customer:      { name: client.name, email: client.email, phone: client.phone },
