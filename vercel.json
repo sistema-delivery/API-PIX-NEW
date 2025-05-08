@@ -4,9 +4,9 @@
     { "src": "api/index.js", "use": "@vercel/node" }
   ],
   "routes": [
-    // toda requisição para /api/... vai para seu handler
+    
     { "src": "/api/(.*)", "dest": "api/index.js" },
-    // a rota raiz e qualquer outra também mapeiam para o mesmo handler
+    
     { "src": "/(.*)",      "dest": "api/index.js" }
   ]
 }
