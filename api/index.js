@@ -105,32 +105,3 @@ app.post('/api/webhook/pix', (req, res) => {
 
 // Export handler para Vercel
 module.exports = serverless(app);
-
-// vercel.json
-{
-  "version": 2,
-  "builds": [
-    { "src": "index.js", "use": "@vercel/node" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "index.js" }
-  ]
-}
-
-// package.json
-{
-  "name": "api-pix-fairpayments",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "axios": "^1.4.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.0",
-    "express": "^4.17.1",
-    "mongoose": "^7.0.0",
-    "serverless-http": "^2.7.0"
-  }
-}
