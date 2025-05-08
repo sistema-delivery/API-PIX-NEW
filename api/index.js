@@ -1,4 +1,3 @@
-// api/index.js
 require('dotenv').config();
 const express  = require('express');
 const mongoose = require('mongoose');
@@ -42,18 +41,22 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/',        (req, res) => res.json({ ok: true, message: 'root OK' }));
-app.get('/api',     (req, res) => res.json({ ok: true, message: '/api OK' }));
+app.get('/',    (req, res) => res.json({ ok: true, message: 'root OK' }));
+app.get('/api', (req, res) => res.json({ ok: true, message: '/api OK' }));
 
-// 1) Cria transação PIX (pass-through)
+// 1) Cria transação PIX (pass-through + defaults)
 app.post('/api/pix/create', async (req, res) => {
-  const payload = { currency: 'BRL', ...req.body };
+  // Adiciona defaults de moeda e método de pagamento, preservando overrides
+  const payload = {
+    currency:      'BRL',
+    paymentMethod: 'PIX',
+    ...req.body
+  };
   console.log('[API] Criando transação FairPayments:', payload);
 
   try {
     const { data } = await axios.post(CREATE_TX_URL, payload, { headers: req.fairHeaders });
     console.log('[API] Retorno FairPayments:', data);
-    // Retorna exatamente o que o bot precisa
     return res.status(201).json({
       transactionId: data.id,
       qrUrl:         data.pix?.qrcode,
