@@ -1,20 +1,15 @@
 require('dotenv').config();
-const serverless = require('serverless-http');
-const express    = require('express');
-const mongoose   = require('mongoose');
-const cors       = require('cors');
-const axios      = require('axios');
+const express  = require('express');
+const mongoose = require('mongoose');
+const cors     = require('cors');
+const axios    = require('axios');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // Carrega variáveis de ambiente
-const {
-  FAIR_SECRET_KEY,
-  MONGODB_URI,
-  WEBHOOK_BASE_URL
-} = process.env;
+const { FAIR_SECRET_KEY, MONGODB_URI, WEBHOOK_BASE_URL } = process.env;
 
 if (!FAIR_SECRET_KEY) {
   console.error('❌ FAIR_SECRET_KEY não definida.');
@@ -32,9 +27,9 @@ if (MONGODB_URI) {
 }
 
 // Constantes de API FairPayments
-const API_BASE         = 'https://api.fairpayments.com.br/functions/v1';
-const CREATE_TX_URL    = `${API_BASE}/transactions`;
-const STATUS_TX_URL    = id => `${API_BASE}/transactions/${id}`;
+const API_BASE      = 'https://api.fairpayments.com.br/functions/v1';
+const CREATE_TX_URL = `${API_BASE}/transactions`;
+const STATUS_TX_URL = id => `${API_BASE}/transactions/${id}`;
 
 // Middleware de autenticação Basic Auth
 app.use((req, res, next) => {
@@ -46,8 +41,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health-checks
-app.get('/',    (req, res) => res.json({ ok: true, message: 'root OK' }));
+// Rotas
+app.get('/', (req, res) => res.json({ ok: true, message: 'root OK' }));
 app.get('/api', (req, res) => res.json({ ok: true, message: '/api OK' }));
 
 // 1) Cria transação PIX
@@ -58,24 +53,31 @@ app.post('/api/pix/create', async (req, res) => {
     amount:        amountCents,
     paymentMethod: 'PIX',
     description:   `Pedido ${identifier || Date.now()}`,
-    customer: { name: client.name, email: client.email, phone: client.phone },
-    items: products.map(p => ({ title: p.name, unitPrice: Math.round((p.unitPrice || amount) * 100), quantity: p.quantity || 1, externalRef: p.id })),
-    splits: splits.map(s => ({ recipientId: s.recipientId, percentage: s.percentage })),
+    customer:      { name: client.name, email: client.email, phone: client.phone },
+    items:         products.map(p => ({ title: p.name, unitPrice: Math.round((p.unitPrice || amount) * 100), quantity: p.quantity || 1, externalRef: p.id })),
+    splits:        splits.map(s => ({ recipientId: s.recipientId, percentage: s.percentage })),
     metadata,
-    postbackUrl: callbackUrl && /^https?:\/\//.test(callbackUrl) ? callbackUrl : WEBHOOK_BASE_URL ? `${WEBHOOK_BASE_URL.replace(/\/+$/, '')}/api/webhook/pix` : undefined
+    postbackUrl:   callbackUrl && /^https?:\/\//.test(callbackUrl)
+                    ? callbackUrl
+                    : WEBHOOK_BASE_URL
+                      ? `${WEBHOOK_BASE_URL.replace(/\/+$/, '')}/api/webhook/pix`
+                      : undefined
   };
   console.log('[API] Criando transação FairPayments:', CREATE_TX_URL, payload);
+
   try {
     const { data } = await axios.post(CREATE_TX_URL, payload, { headers: req.fairHeaders });
     console.log('[API] FairPayments retornou:', data);
+
     const transactionId = data.id;
-    const qrUrl = data.pix?.qrcode;
-    const paymentUrl = data.payment_url;
+    const qrUrl         = data.pix?.qrcode;
+    const paymentUrl    = data.payment_url;
+
     return res.status(201).json({ transactionId, qrUrl, paymentUrl });
   } catch (err) {
     console.error('[API] Erro criando transação:', err.response?.status, err.response?.data || err.message);
     const code = err.response?.status || 500;
-    const body = err.response?.data || { message: err.message };
+    const body = err.response?.data   || { message: err.message };
     return res.status(code).json(body);
   }
 });
@@ -99,8 +101,8 @@ app.post('/api/webhook/pix', (req, res) => {
   const { data } = req.body;
   console.log(`🔔 FairPayments Webhook: ${data.id} -> ${data.status}`);
   // TODO: atualize o MongoDB ou notifique o bot
-  res.status(200).send('OK');
+  return res.status(200).send('OK');
 });
 
-// Export handler para Vercel
-module.exports = serverless(app);
+// Export express app para Vercel
+module.exports = app;
