@@ -1,3 +1,4 @@
+// api/index.js
 require('dotenv').config();
 const express  = require('express');
 const mongoose = require('mongoose');
@@ -46,30 +47,30 @@ app.get('/api', (req, res) => res.json({ ok: true, message: '/api OK' }));
 
 // 1) Cria transação PIX (pass-through ajustando chaves)
 app.post('/api/pix/create', async (req, res) => {
-  // Extrai possíveis campos do bot
   const {
     client,
     customer,
     products,
     items,
-    ...restBody
+    ...rest
   } = req.body;
 
-  // Monta payload final para FairPayments
+  // Determina customer final
+  const finalCustomer = customer || client;
+  // Mapeia produtos para items se necessário
+  const finalItems = items || (products?.map(p => ({
+    title:      p.name || p.title,
+    unitPrice:  Math.round((p.unitPrice ?? p.amount ?? 0) * 100),
+    quantity:   p.quantity || 1,
+    externalRef:p.id || p.externalRef
+  })) || []);
+
   const payload = {
     currency:      'BRL',
     paymentMethod: 'PIX',
-    // Campos principais
-    ...restBody,
-    // Usa customer direto, ou mapeia client se existir
-    customer: customer || client,
-    // Usa items direto, ou mapeia products se existir
-    items: items || products?.map(p => ({
-      title:      p.name || p.title,
-      unitPrice:  Math.round((p.unitPrice ?? p.amount ?? 0) * 100),
-      quantity:   p.quantity || 1,
-      externalRef:p.id || p.externalRef
-    }))
+    ...rest,
+    customer: finalCustomer,
+    items:    finalItems
   };
 
   console.log('[API] Criando transação FairPayments:', payload);
@@ -106,7 +107,6 @@ app.get('/api/pix/status/:id', async (req, res) => {
 app.post('/api/webhook/pix', (req, res) => {
   const { data } = req.body;
   console.log(`🔔 Webhook FairPayments: tx ${data.id} → ${data.status}`);
-  // TODO: atualize DB ou notifique o bot
   return res.sendStatus(200);
 });
 
