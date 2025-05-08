@@ -45,15 +45,19 @@ app.use((req, res, next) => {
 app.get('/',    (req, res) => res.json({ ok: true, message: 'root OK' }));
 app.get('/api', (req, res) => res.json({ ok: true, message: '/api OK' }));
 
-// 1) Cria transação PIX (pass-through ajustando chaves)
+// 1) Cria transação PIX (pass-through ajustando chaves e convertendo valor)
 app.post('/api/pix/create', async (req, res) => {
   const {
+    amount: amountReais,
     client,
     customer,
     products,
     items,
     ...rest
   } = req.body;
+
+  // Converte o valor de reais para centavos
+  const amount = Math.round((amountReais || 0) * 100);
 
   // Determina customer final
   const finalCustomer = customer || client;
@@ -68,9 +72,12 @@ app.post('/api/pix/create', async (req, res) => {
   const payload = {
     currency:      'BRL',
     paymentMethod: 'PIX',
-    ...rest,
-    customer: finalCustomer,
-    items:    finalItems
+    identifier:    rest.identifier,
+    amount,
+    metadata:      rest.metadata,
+    callbackUrl:   rest.callbackUrl,
+    customer:      finalCustomer,
+    items:         finalItems
   };
 
   console.log('[API] Criando transação FairPayments:', payload);
